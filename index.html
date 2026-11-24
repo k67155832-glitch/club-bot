@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Личный кабинет</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#0e1015;--card:#181c24;--card2:#212634;--text:#eef1f6;
+    --muted:#8a93a4;--accent:#4f8cff;--accent2:#8b5cf6;
+    --green:#22c55e;--radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    padding:16px 16px 40px;
+    background-image:
+      radial-gradient(circle at 15% 0%,rgba(79,140,255,.22),transparent 45%),
+      radial-gradient(circle at 95% 8%,rgba(139,92,246,.18),transparent 40%);
+  }
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;
+    border:1px solid rgba(255,255,255,.04)}
+  .profile{display:flex;align-items:center;gap:14px}
+  .avatar{width:58px;height:58px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:22px;color:#fff;flex-shrink:0}
+  .name{font-size:17px;font-weight:600}
+  .username{font-size:13px;color:var(--muted);margin-top:2px}
+  .badge{display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;
+    margin-top:8px;background:rgba(34,197,94,.15);color:var(--green)}
+  .badge::before{content:"●";font-size:8px}
+  h2{font-size:15px;font-weight:600;margin-bottom:12px}
+  .hero{background:linear-gradient(135deg,rgba(79,140,255,.25),rgba(139,92,246,.22));
+    border:1px solid rgba(79,140,255,.3)}
+  .hero p{color:#cdd6e8;font-size:13px;line-height:1.5;margin:8px 0 14px}
+  .btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+    font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn:active{transform:scale(.98)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat{background:var(--card2);border-radius:14px;padding:14px}
+  .stat b{display:block;font-size:22px;font-weight:700}
+  .stat span{font-size:12px;color:var(--muted)}
+  .ch{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .ch:last-child{border:none;padding-bottom:0}
+  .ch-name{font-size:14px}
+  .ok{color:var(--green);font-size:16px}
+  .muted{color:var(--muted);font-size:12px;text-align:center;margin-top:18px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="card profile">
+  <div class="avatar" id="ava">?</div>
+  <div>
+    <div class="name" id="name">Гость</div>
+    <div class="username" id="uname">@—</div>
+    <div class="badge">Участник клуба</div>
+  </div>
+</div>
+
+<div class="card hero">
+  <h2>🔓 Доступ к закрытому каналу</h2>
+  <p>Всё готово — твоя персональная ссылка ждёт в чате с ботом.</p>
+  <button class="btn" onclick="openBot()">Перейти в канал</button>
+</div>
+
+<div class="card">
+  <h2>📊 Статистика</h2>
+  <div class="grid">
+    <div class="stat"><b id="s1">—</b><span>дней в клубе</span></div>
+    <div class="stat"><b>2</b><span>канала</span></div>
+    <div class="stat"><b>1</b><span>закрытый чат</span></div>
+    <div class="stat"><b>★★★</b><span>уровень</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📡 Каналы</h2>
+  <div class="ch"><span class="ch-name">Анонсы</span><span class="ok">✓</span></div>
+  <div class="ch"><span class="ch-name">Новости Клуба</span><span class="ok">✓</span></div>
+  <div class="ch"><span class="ch-name">Закрытый канал</span><span class="ok">✓</span></div>
+</div>
+
+<div class="muted">Mini App v1.0 · сделано на Telegram WebApp SDK</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  const u = tg?.initDataUnsafe?.user;
+  if (u) {
+    const full = [u.first_name, u.last_name].filter(Boolean).join(" ");
+    document.getElementById("name").textContent  = full || "Пользователь";
+    document.getElementById("uname").textContent = u.username ? "@" + u.username : "id " + u.id;
+    document.getElementById("ava").textContent   =
+      ((u.first_name?.[0] || "") + (u.last_name?.[0] || "")).toUpperCase() || "U";
+    document.getElementById("s1").textContent = Math.floor(Math.random() * 30) + 1;
+  } else {
+    document.getElementById("s1").textContent = "1";
+  }
+
+  function openBot() {
+    if (tg) tg.close();
+  }
+</script>
+</body>
+</html>
