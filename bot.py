@@ -21,8 +21,8 @@ WEBAPP_URL        = os.getenv("WEBAPP_URL", "https://example.com")
 PORT              = int(os.getenv("PORT", 8080))
 
 CHANNELS = [
-    {"id": "@channel_one", "name": "Канал 1", "url": "https://t.me/channel_one"},
-    {"id": "@channel_two", "name": "Канал 2", "url": "https://t.me/channel_two"},
+    {"@-1005749665886": "@channel_one", "name": "Канал 1", "-1005749665886": "https://t.me/channel_one"},
+    {"@-1005657673722": "@channel_two", "name": "Канал 2", "-1005657673722": "https://t.me/channel_two"},
 ]
 
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
