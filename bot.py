@@ -4,11 +4,11 @@ import os
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram.enums import ParseMode, ChatMemberStatus
 from aiogram.filters import Command
 from aiogram.types import (
     CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
-    MenuButtonWebApp, Message, WebAppInfo,
+    MenuButtonWebApp, Message, WebAppInfo, ChatJoinRequest
 )
 from aiohttp import web
 
@@ -20,6 +20,7 @@ PRIVATE_LINK      = os.getenv("PRIVATE_LINK", "https://t.me/+fallback")
 WEBAPP_URL        = os.getenv("WEBAPP_URL", "https://example.com")
 PORT              = int(os.getenv("PORT", 8080))
 
+# Твои каналы
 CHANNELS = [
     {"id": "@anonscluba", "name": "Анонсы", "url": "https://t.me/anonscluba"},
     {"id": "@novostycluba", "name": "Новости Клуба", "url": "https://t.me/novostycluba"},
@@ -28,10 +29,12 @@ CHANNELS = [
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp  = Dispatcher()
 
+
 def subs_kb() -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(text=f"📢 {c['name']}", url=c["url"])] for c in CHANNELS]
     rows.append([InlineKeyboardButton(text="✅ Проверить подписку", callback_data="check")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 async def not_subscribed(user_id: int) -> list[dict]:
     result = []
@@ -45,6 +48,7 @@ async def not_subscribed(user_id: int) -> list[dict]:
             result.append(ch)
     return result
 
+
 @dp.message(Command("start"))
 async def cmd_start(msg: Message):
     text = (
@@ -53,10 +57,12 @@ async def cmd_start(msg: Message):
         "📌 <b>Как попасть:</b>\n"
         "1. Подпишись на каналы ниже\n"
         "2. Нажми «Проверить подписку»\n"
-        "3. Получи личную одноразовую ссылку в закрытый канал\n\n"
+        "3. Нажми на ссылку и подай заявку\n"
+        "4. Бот проверит и одобрит вход\n\n"
         "📱 Личный кабинет — через меню слева (☰)."
     )
     await msg.answer(text, reply_markup=subs_kb())
+
 
 @dp.callback_query(F.data == "check")
 async def cb_check(call: CallbackQuery):
@@ -72,22 +78,65 @@ async def cb_check(call: CallbackQuery):
         )
         return
 
-    invite = PRIVATE_LINK
-    try:
-        link = await bot.create_chat_invite_link(
-            chat_id=PRIVATE_CHANNEL,
-            member_limit=1,
-            name=f"user_{call.from_user.id}",
-        )
-        invite = link.invite_link
-    except Exception as e:
-        logging.exception("invite link: %s", e)
-
     await call.message.edit_text(
-        "🎉 <b>Доступ открыт!</b>\n\n"
-        f"Твоя персональная ссылка (одноразовая):\n{invite}\n\n"
-        "⚠️ Ссылка работает только для одного входа — не передавай её."
+        "🎉 <b>Подписка подтверждена!</b>\n\n"
+        f"Твоя ссылка для входа (подай заявку, бот её одобрит):\n{PRIVATE_LINK}\n\n"
+        "⚠️ Не пересылай ссылку другим — у каждого должна быть своя проверка."
     )
+
+
+@dp.chat_join_request()
+async def join_request_handler(request: ChatJoinRequest):
+    missing = await not_subscribed(request.from_user.id)
+    
+    if not missing:
+        try:
+            await bot.approve_chat_join_request(
+                chat_id=request.chat.id,
+                user_id=request.from_user.id
+            )
+            await bot.send_message(
+                request.from_user.id, 
+                "✅ Заявка одобрена! Добро пожаловать в закрытый клуб."
+            )
+        except Exception as e:
+            logging.error(f"Ошибка одобрения: {e}")
+    else:
+        try:
+            await bot.decline_chat_join_request(
+                chat_id=request.chat.id,
+                user_id=request.from_user.id
+            )
+            await bot.send_message(
+                request.from_user.id, 
+                "❌ Не удалось войти. Сначала подпишись на каналы в боте!",
+                reply_markup=subs_kb()
+            )
+        except Exception as e:
+            logging.error(f"Ошибка отклонения: {e}")
+
+
+@dp.chat_member()
+async def chat_member_handler(event):
+    # Если человек вышел из одного из публичных каналов
+    if event.chat.username and f"@{event.chat.username}" in [c["id"] for c in CHANNELS]:
+        if event.new_chat_member.status == ChatMemberStatus.LEFT:
+            try:
+                await bot.ban_chat_member(
+                    chat_id=PRIVATE_CHANNEL,
+                    user_id=event.new_chat_member.user.id
+                )
+                await bot.unban_chat_member(
+                    chat_id=PRIVATE_CHANNEL,
+                    user_id=event.new_chat_member.user.id
+                )
+                await bot.send_message(
+                    event.new_chat_member.user.id,
+                    "⚠️ Ты отписался от канала-спонсора, поэтому доступ в закрытый клуб закрыт. Подпишись снова и получи доступ через бота."
+                )
+            except Exception as e:
+                logging.error(f"Ошибка кика: {e}")
+
 
 @dp.message(Command("menu"))
 async def cmd_menu(msg: Message):
@@ -95,6 +144,7 @@ async def cmd_menu(msg: Message):
         InlineKeyboardButton(text="📱 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
     await msg.answer("Личный кабинет 👇", reply_markup=kb)
+
 
 async def health(_request):
     return web.Response(text="ok")
